@@ -470,7 +470,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "CORDOVA_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/libCordova.a\" &&\nPLUGIN_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/libCordovaPlugins.a\" &&\n\nDEVICE_CORDOVA_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphoneos/libCordova.a\" &&\nDEVICE_PLUGIN_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphoneos/libCordovaPlugins.a\" &&\n\nUNIVERSAL_LIBRARY_DIR=\"${BUILD_DIR}/${CONFIGURATION}-iphoneuniversal\" &&\n\n\n# Create framework directory structure.\nrm -rf \"${UNIVERSAL_LIBRARY_DIR}\" &&\nmkdir -p \"${UNIVERSAL_LIBRARY_DIR}\" &&\n# Generate universal binary for the device and simulator.\nlipo \"${CORDOVA_LIB}\" \"${DEVICE_CORDOVA_LIB}\" -create -output \"${UNIVERSAL_LIBRARY_DIR}/libCordova.a\" &&\nlipo \"${PLUGIN_LIB}\" \"${DEVICE_PLUGIN_LIB}\" -create -output \"${UNIVERSAL_LIBRARY_DIR}/libCordovaPlugins.a\"\n";
+			shellScript = "CORDOVA_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/libCordova.a\" &&\nPLUGIN_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/libCordovaPlugins.a\" &&\n\nDEVICE_CORDOVA_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphoneos/libCordova.a\" &&\nDEVICE_PLUGIN_LIB=\"${BUILD_DIR}/${CONFIGURATION}-iphoneos/libCordovaPlugins.a\" &&\n\nUNIVERSAL_LIBRARY_DIR=\"${BUILD_DIR}/${CONFIGURATION}-iphoneuniversal\" &&\n\n\n# Create framework directory structure.\nrm -rf \"${UNIVERSAL_LIBRARY_DIR}\" &&\nmkdir -p \"${UNIVERSAL_LIBRARY_DIR}\" &&\n# Generate universal binary for the device and simulator.\nlipo \"${CORDOVA_LIB}\" \"${DEVICE_CORDOVA_LIB}\" -create -output \"${UNIVERSAL_LIBRARY_DIR}/libCordova.a\" &&\nlipo \"${PLUGIN_LIB}\" \"${DEVICE_PLUGIN_LIB}\" -create -output \"${UNIVERSAL_LIBRARY_DIR}/libCordovaPlugins.a\"\n\ncp -R \"${BUILD_DIR}/${CONFIGURATION}-iphonesimulator/include\" \"${UNIVERSAL_LIBRARY_DIR}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -653,6 +653,7 @@
 				52C0D7FE1837140500497B4A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
