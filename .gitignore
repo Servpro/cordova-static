@@ -1,0 +1,15 @@
+#OS junk files
+[Tt]humbs.db
+*.DS_Store
+*.bak*
+
+# Xcode
+[Bb]uild/
+
+#Xcode files
+xcuserdata
+
+
+
+
+cordova_output/
