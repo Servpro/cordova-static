@@ -1,5 +1,8 @@
 This project will create two universal static libraries: libCordova and libCordovaPlugins.
 
+To update to a new version of cordova, you must first update the npm package:
+$ npm install -g cordova
+
 usage:
 $ getcordova.sh
 * get the latest cordova ios dist using the 'cordova' cli. Also gets all standard cordova plugins

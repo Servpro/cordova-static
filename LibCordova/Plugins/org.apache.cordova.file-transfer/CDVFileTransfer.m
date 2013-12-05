@@ -270,11 +270,12 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
 
 - (void)fileDataForUploadCommand:(CDVInvokedUrlCommand*)command
 {
-    NSString* target = (NSString*)[command.arguments objectAtIndex:0];
+    NSString* source = (NSString*)[command.arguments objectAtIndex:0];
+    NSString* server = [command.arguments objectAtIndex:1];
     NSError* __autoreleasing err = nil;
 
     // return unsupported result for assets-library URLs
-    if ([target hasPrefix:kCDVAssetsLibraryPrefix]) {
+    if ([source hasPrefix:kCDVAssetsLibraryPrefix]) {
         // Instead, we return after calling the asynchronous method and send `result` in each of the blocks.
         ALAssetsLibraryAssetForURLResultBlock resultBlock = ^(ALAsset* asset) {
             if (asset) {
@@ -286,7 +287,7 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
                 [self uploadData:fileData command:command];
             } else {
                 // We couldn't find the asset.  Send the appropriate error.
-                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsInt:NOT_FOUND_ERR];
+                CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self createFileTransferError:NOT_FOUND_ERR AndSource:source AndTarget:server]];
                 [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
             }
         };
@@ -297,19 +298,20 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
         };
 
         ALAssetsLibrary* assetsLibrary = [[ALAssetsLibrary alloc] init];
-        [assetsLibrary assetForURL:[NSURL URLWithString:target] resultBlock:resultBlock failureBlock:failureBlock];
+        [assetsLibrary assetForURL:[NSURL URLWithString:source] resultBlock:resultBlock failureBlock:failureBlock];
         return;
     } else {
         // Extract the path part out of a file: URL.
         NSString* filePath = nil;
-        if([target hasPrefix:@"/"]) {
-            filePath = [target copy];
+        if([source hasPrefix:@"/"]) {
+            filePath = [source copy];
         } else {
-            filePath = [[NSURL URLWithString:target] path];
+            filePath = [[NSURL URLWithString:source] path];
         }
+
         if (filePath == nil) {
             // We couldn't find the asset.  Send the appropriate error.
-            CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsInt:NOT_FOUND_ERR];
+            CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self createFileTransferError:NOT_FOUND_ERR AndSource:source AndTarget:server]];
             [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
             return;
         }
@@ -318,7 +320,7 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
         NSData* fileData = [NSData dataWithContentsOfFile:filePath options:NSDataReadingMappedIfSafe error:&err];
 
         if (err != nil) {
-            NSLog(@"Error opening file %@: %@", target, err);
+            NSLog(@"Error opening file %@: %@", source, err);
         }
         [self uploadData:fileData command:command];
     }
@@ -364,14 +366,14 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
 - (void)download:(CDVInvokedUrlCommand*)command
 {
     DLog(@"File Transfer downloading file...");
-    NSString* sourceUrl = [command.arguments objectAtIndex:0];
-    NSString* filePath = [command.arguments objectAtIndex:1];
+    NSString* source = [command.arguments objectAtIndex:0];
+    NSString* target = [command.arguments objectAtIndex:1];
     BOOL trustAllHosts = [[command.arguments objectAtIndex:2 withDefault:[NSNumber numberWithBool:YES]] boolValue]; // allow self-signed certs
     NSString* objectId = [command.arguments objectAtIndex:3];
     NSDictionary* headers = [command.arguments objectAtIndex:4 withDefault:nil];
 
     // return unsupported result for assets-library URLs
-    if ([filePath hasPrefix:kCDVAssetsLibraryPrefix]) {
+    if ([target hasPrefix:kCDVAssetsLibraryPrefix]) {
         CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_MALFORMED_URL_EXCEPTION messageAsString:@"download not supported for assets-library URLs."];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
@@ -380,26 +382,26 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
     CDVPluginResult* result = nil;
     CDVFileTransferError errorCode = 0;
 
-    NSURL* file;
+    NSURL* targetURL;
 
-    if ([filePath hasPrefix:@"/"]) {
-        file = [NSURL fileURLWithPath:filePath];
+    if ([target hasPrefix:@"/"]) {
+        targetURL = [NSURL fileURLWithPath:target];
     } else {
-        file = [NSURL URLWithString:filePath];
+        targetURL = [NSURL URLWithString:target];
     }
 
-    NSURL* url = [NSURL URLWithString:sourceUrl];
+    NSURL* url = [NSURL URLWithString:source];
 
     if (!url) {
         errorCode = INVALID_URL_ERR;
-        NSLog(@"File Transfer Error: Invalid server URL %@", sourceUrl);
-    } else if (![file isFileURL]) {
+        NSLog(@"File Transfer Error: Invalid server URL %@", source);
+    } else if (![targetURL isFileURL]) {
         errorCode = FILE_NOT_FOUND_ERR;
-        NSLog(@"File Transfer Error: Invalid file path or URL %@", filePath);
+        NSLog(@"File Transfer Error: Invalid file path or URL %@", target);
     }
 
     if (errorCode > 0) {
-        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self createFileTransferError:errorCode AndSource:sourceUrl AndTarget:filePath]];
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self createFileTransferError:errorCode AndSource:source AndTarget:target]];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
     }
@@ -412,8 +414,8 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
     delegate.direction = CDV_TRANSFER_DOWNLOAD;
     delegate.callbackId = command.callbackId;
     delegate.objectId = objectId;
-    delegate.source = sourceUrl;
-    delegate.target = filePath;
+    delegate.source = source;
+    delegate.target = target;
     delegate.trustAllHosts = trustAllHosts;
 
     delegate.connection = [NSURLConnection connectionWithRequest:req delegate:delegate];
@@ -527,7 +529,7 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
     NSMutableDictionary* uploadResult;
     CDVPluginResult* result = nil;
     BOOL bDirRequest = NO;
-    CDVFile* file;
+    CDVFile* filePlugin;
 
     NSLog(@"File Transfer Finished with response code %d", self.responseCode);
 
@@ -553,8 +555,8 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
             self.targetFileHandle = nil;
             DLog(@"File Transfer Download success");
 
-            file = [[CDVFile alloc] init];
-            result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[file getDirectoryEntry:target isDirectory:bDirRequest]];
+            filePlugin = [[CDVFile alloc] init];
+            result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[filePlugin getDirectoryEntry:target isDirectory:bDirRequest]];
         } else {
             downloadResponse = [[NSString alloc] initWithData:self.responseData encoding:NSUTF8StringEncoding];
             result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[command createFileTransferError:CONNECTION_ERR AndSource:source AndTarget:target AndHttpStatus:self.responseCode AndBody:downloadResponse]];
@@ -644,7 +646,7 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
         if (self.targetFileHandle == nil) {
             [self cancelTransferWithError:connection errorMessage:@"Could not open target file for writing"];
         }
-        DLog(@"Streaming to file %@", target);
+       // DLog(@"Streaming to file %@", filePath);
     }
 }
 
