@@ -303,12 +303,9 @@ static CFIndex WriteDataToStream(NSData* data, CFWriteStreamRef stream)
     } else {
         // Extract the path part out of a file: URL.
         NSString* filePath = nil;
-        if([source hasPrefix:@"/"]) {
+        if([source hasPrefix:@"/"])
             filePath = [source copy];
-        } else {
-            filePath = [[NSURL URLWithString:source] path];
-        }
-
+        else filePath = [[NSURL URLWithString:source] path];
         if (filePath == nil) {
             // We couldn't find the asset.  Send the appropriate error.
             CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:[self createFileTransferError:NOT_FOUND_ERR AndSource:source AndTarget:server]];

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+npm update -g cordova
+
 if [ -d cordova_output ];  then
  rm -rf cordova_output
 fi
